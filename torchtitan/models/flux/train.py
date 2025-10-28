@@ -32,11 +32,11 @@ class FluxTrainer(Trainer):
         # (mainly for debugging, expect perf loss).
         # For Flux model, we need distinct seed across FSDP ranks to ensure we randomly dropout prompts info in dataloader
         dist_utils.set_determinism(
-            self.parallel_dims.world_mesh,
-            self.device,
-            job_config.training.seed,
-            job_config.training.deterministic,
-            distinct_seed_mesh_dim="dp_shard",
+            world_mesh=self.parallel_dims.world_mesh,
+            device=self.device,
+            distinct_seed_mesh_dims=["dp_shard", "dp_replicate"],
+            seed=job_config.training.seed,
+            deterministic=job_config.training.deterministic,
         )
 
         # NOTE: self._dtype is the data type used for encoders (image encoder, T5 text encoder, CLIP text encoder).
