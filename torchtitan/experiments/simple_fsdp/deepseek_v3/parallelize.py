@@ -143,6 +143,7 @@ def parallelize_deepseekv3(
                     dp_mode,
                     ac_mode=job_config.activation_checkpoint.mode,
                     mp_policy=mp_policy,
+                    reshard_after_forward_policy=job_config.parallelism.simple_fsdp_reshard_after_forward,
                     shard_dim=experts_shard_dim,
                     reduction_divide_factor=parallel_dims.fsdp_gradient_divide_factor,
                 )
@@ -153,6 +154,7 @@ def parallelize_deepseekv3(
             dp_mode,
             ac_mode=job_config.activation_checkpoint.mode,
             mp_policy=mp_policy,
+            reshard_after_forward_policy=job_config.parallelism.simple_fsdp_reshard_after_forward,
         )
 
         logger.info(

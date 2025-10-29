@@ -223,6 +223,7 @@ class ReplicateComputation(torch.nn.Module):
         mode,
         regional_ac,
         mp_policy,
+        reshard_after_forward,
         reduction_divide_factor,
     ):
         super().__init__()
@@ -241,6 +242,7 @@ class ReplicateComputation(torch.nn.Module):
         mp_policy = mp_policy or MixedPrecisionPolicy()
         self.param_dtype = mp_policy.param_dtype
         self.reduce_dtype = mp_policy.reduce_dtype
+        self.reshard_after_forward = reshard_after_forward
 
     def replicate_compute(self, x):
         # data parallel runtime replicate parameters and do local compute
@@ -305,7 +307,11 @@ class ReplicateComputation(torch.nn.Module):
         if not _active_parametrization:
             return x
 
-        if self.regional_ac and self.mode in ("fully_shard", "hybrid_shard"):
+        if (
+            self.regional_ac
+            and self.mode in ("fully_shard", "hybrid_shard")
+            and self.reshard_after_forward
+        ):
             # apply checkpointing to implement reshard_after_forward
             output = checkpoint(
                 self.replicate_compute, x, use_reentrant=False, context_fn=fsdp_policy
@@ -322,6 +328,7 @@ def data_parallel(
     mode="replicate",
     ac_mode: str = "none",
     mp_policy: Optional[MixedPrecisionPolicy] = None,
+    reshard_after_forward_policy: str = "always",
     shard_dim: int = 0,
     reduction_divide_factor: Optional[float] = None,
 ):
@@ -337,6 +344,20 @@ def data_parallel(
         ), "hybrid sharded data parallel requires 2D DeviceMesh"
     else:
         raise ValueError(f"Unsupported mode {mode}")
+
+    match reshard_after_forward_policy:
+        case "always":
+            reshard_after_forward = True
+        case "never":
+            reshard_after_forward = False
+        case "default":
+            # For PP, by default do not reshard after forward to avoid per-microbatch
+            # all-gathers, which can be expensive and non-overlapped
+            reshard_after_forward = not pp_enabled
+        case _:
+            raise ValueError(
+                f"Invalid reshard_after_forward_policy: {reshard_after_forward_policy}."
+            )
 
     modules = list(model.modules())
 
@@ -386,6 +407,7 @@ def data_parallel(
                 mode,
                 regional_ac,
                 mp_policy=mp_policy,
+                reshard_after_forward=reshard_after_forward,
                 reduction_divide_factor=reduction_divide_factor,
             ),
         )

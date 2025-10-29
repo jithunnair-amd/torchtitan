@@ -118,6 +118,7 @@ def parallelize_llama(
             mode=dp_mode,
             ac_mode=job_config.activation_checkpoint.mode,
             mp_policy=mp_policy,
+            reshard_after_forward_policy=job_config.parallelism.simple_fsdp_reshard_after_forward,
         )
         logger.info(
             "Applied Data Parallel (simple_fsdp) (dp mode=%s) to the model", dp_mode
