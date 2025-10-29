@@ -133,7 +133,13 @@ def test_generate(
         # sequences would require https://github.com/pytorch/torchtitan/pull/686
         apply_tp_minus_sp(model, parallel_dims.world_mesh["tp"])
 
-    dist_utils.set_determinism(world_mesh, device, seed, deterministic)
+    dist_utils.set_determinism(
+        world_mesh=world_mesh,
+        device=device,
+        distinct_seed_mesh_dims=["pp"],
+        seed=seed,
+        deterministic=deterministic,
+    )
 
     # materalize model
     model.to_empty(device=device_type)
